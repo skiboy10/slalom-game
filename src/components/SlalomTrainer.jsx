@@ -4,12 +4,14 @@ import {
   PERFECT_WINDOW, GOOD_WINDOW, LATE_WINDOW,
   INITIAL_SPEED, MAX_SPEED, ACCELERATION, TURN_DECELERATION,
   MIN_GATE_SPACING, MAX_GATE_SPACING, TOTAL_GATES,
-  SKIER_CENTER_X, LEFT_POSITION, RIGHT_POSITION, MAX_MISSES
+  SKIER_CENTER_X, LEFT_POSITION, RIGHT_POSITION, MAX_MISSES,
+  FINISH_LINE_TIME
 } from '../config/gameSettings'
 import { useAudio } from '../hooks/useAudio'
 import { generateSnowParticles, generateSparkles, generateTrees, generateCrowd } from '../utils/generators'
 import Skier from './Skier'
 import SlalomGate from './SlalomGate'
+import FinishLine from './FinishLine'
 import Spectator from './Spectator'
 import Tree from './Tree'
 import HUD from './HUD'
@@ -46,6 +48,7 @@ export default function SlalomTrainer() {
   const [cameraShake, setCameraShake] = useState({ x: 0, y: 0 })
   const [snowParticles, setSnowParticles] = useState(() => generateSnowParticles(30))
   const [lastFeedback, setLastFeedback] = useState(null)
+  const [finishLineY, setFinishLineY] = useState(null)
 
   const { initAudio, playBeep, playCarveSound, playGateHit } = useAudio()
 
@@ -323,6 +326,18 @@ export default function SlalomTrainer() {
       setGroundOffset(prev => (prev + speed) % 40)
       setSpeed(prev => Math.min(MAX_SPEED, prev + ACCELERATION))
 
+      // Check if finish line should spawn (after FINISH_LINE_TIME)
+      const currentRaceTime = Date.now() - raceStartTimeRef.current
+      setFinishLineY(prev => {
+        if (prev === null && currentRaceTime >= FINISH_LINE_TIME) {
+          return GATE_SPAWN_Y
+        }
+        if (prev !== null) {
+          return prev + speed
+        }
+        return prev
+      })
+
       setGates(prev => {
         let newMisses = 0
 
@@ -341,7 +356,8 @@ export default function SlalomTrainer() {
           setLastFeedback({ text: 'MISS', color: '#ef4444', penalty: 2.0, id: Date.now() })
         }
 
-        if (gateCount < TOTAL_GATES) {
+        // Only spawn gates if finish line hasn't appeared yet
+        if (gateCount < TOTAL_GATES && currentRaceTime < FINISH_LINE_TIME) {
           lastGateSpawnRef.current += speed
           if (lastGateSpawnRef.current >= nextGateSpacingRef.current) {
             const side = nextGateSideRef.current
@@ -389,7 +405,7 @@ export default function SlalomTrainer() {
     if (misses >= MAX_MISSES) {
       setGameState('gameOver')
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current)
-    } else if (gatesCleared >= TOTAL_GATES) {
+    } else if (gatesCleared >= TOTAL_GATES || (finishLineY !== null && finishLineY >= SKIER_Y)) {
       const finalTime = Date.now() - raceStartTimeRef.current
       setRaceTime(finalTime)
       if (!bestTime || finalTime < bestTime) {
@@ -400,7 +416,7 @@ export default function SlalomTrainer() {
       playBeep(880, 0.5, 0.4)
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current)
     }
-  }, [misses, gatesCleared, gameState, bestTime, playBeep])
+  }, [misses, gatesCleared, gameState, bestTime, playBeep, finishLineY])
 
   const startGame = () => {
     initAudio()
@@ -414,6 +430,7 @@ export default function SlalomTrainer() {
     setSplitTimes([])
     setLastSplit(null)
     setLastFeedback(null)
+    setFinishLineY(null)
     setSkierX(SKIER_CENTER_X)
     setSkierLean(0)
     setSkierTrail([])
@@ -559,6 +576,9 @@ export default function SlalomTrainer() {
         {gates.map(gate => (
           <SlalomGate key={gate.id} x={gate.x} y={gate.y} side={gate.side} hit={gate.hit} hitTime={gate.hitTime} />
         ))}
+
+        {/* Finish Line */}
+        {finishLineY !== null && <FinishLine y={finishLineY} />}
 
         {/* Skier */}
         <Skier lean={skierLean} x={skierX} />
