@@ -37,3 +37,6 @@ export const PENALTIES = {
 
 // Max misses before DNF
 export const MAX_MISSES = 3
+
+// Finish line appears after this many milliseconds
+export const FINISH_LINE_TIME = 60000
