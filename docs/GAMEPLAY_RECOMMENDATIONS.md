@@ -118,3 +118,18 @@ These can be built/validated in parallel, then merged behind a single test pass.
 - **Near-term:** stay in current React setup while validating gameplay loop changes.
 - **If we need more visual fidelity/performance:** migrate gameplay layer to **Phaser 3** (best 2D fit), keep React for menus/settings if desired.
 - **Alternative:** PixiJS for render-heavy custom approach.
+
+
+## Broadcast-quality pass (implemented)
+
+Second jam pass visual upgrades added:
+- cloud parallax layer
+- atmospheric speed-reactive haze
+- animated course banners
+- high-speed streak lines
+- refined depth and motion cues
+
+### Next if we migrate engines
+- Keep game design constants and run-state machine unchanged
+- Move render/input loop into Phaser 3 scene
+- Keep React for menu/settings shell

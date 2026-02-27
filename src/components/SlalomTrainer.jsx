@@ -30,6 +30,19 @@ const RIGHT_TREES = generateTrees(6)
 const LEFT_CROWD = generateCrowd(15)
 const RIGHT_CROWD = generateCrowd(15)
 
+const CLOUDS = [
+  { id: 1, x: 40, y: 52, w: 82, h: 26, speed: 0.05 },
+  { id: 2, x: 180, y: 34, w: 68, h: 22, speed: 0.07 },
+  { id: 3, x: 300, y: 58, w: 96, h: 30, speed: 0.04 },
+]
+
+const BANNERS = [
+  { id: 1, side: 'left', y: 145, color: '#ef4444' },
+  { id: 2, side: 'right', y: 210, color: '#3b82f6' },
+  { id: 3, side: 'left', y: 290, color: '#f59e0b' },
+  { id: 4, side: 'right', y: 360, color: '#22c55e' },
+]
+
 export default function SlalomTrainer() {
   const [gameState, setGameState] = useState('start')
   const [countdownValue, setCountdownValue] = useState(3)
@@ -525,6 +538,8 @@ export default function SlalomTrainer() {
     ? Math.min(1.04, 1 + (speed - activePreset.initialSpeed) * 0.015)
     : 1
 
+  const highSpeedIntensity = Math.max(0, Math.min(1, (speed - activePreset.initialSpeed) / (activePreset.maxSpeed - activePreset.initialSpeed + 0.001)))
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-4">
       <div
@@ -554,6 +569,20 @@ export default function SlalomTrainer() {
         {/* Sun bloom */}
         <div className="absolute top-[-80px] right-[-60px] w-52 h-52 rounded-full bg-white/30 blur-2xl pointer-events-none" />
 
+        {/* Cloud layer parallax */}
+        <svg className="absolute top-0 left-0 w-full h-[120px] pointer-events-none">
+          {CLOUDS.map((c) => {
+            const driftX = (c.x + ((groundOffset * c.speed) % (GAME_WIDTH + c.w)) - c.w)
+            return (
+              <g key={c.id} transform={`translate(${driftX}, ${c.y})`} opacity={0.52}>
+                <ellipse cx={c.w * 0.3} cy={c.h * 0.7} rx={c.w * 0.28} ry={c.h * 0.42} fill="#ffffff" />
+                <ellipse cx={c.w * 0.55} cy={c.h * 0.55} rx={c.w * 0.3} ry={c.h * 0.48} fill="#ffffff" />
+                <ellipse cx={c.w * 0.78} cy={c.h * 0.72} rx={c.w * 0.24} ry={c.h * 0.38} fill="#ffffff" />
+              </g>
+            )
+          })}
+        </svg>
+
         {/* Mountains - parallax */}
         <svg className="absolute top-0 left-0 w-full" style={{ height: 120, transform: `translateX(${(-groundOffset * 0.12) % 32}px)` }}>
           <polygon points="0,118 40,50 80,75 130,30 180,60 230,40 280,55 340,35 400,118" fill="#94a3b8" opacity="0.68" />
@@ -574,6 +603,15 @@ export default function SlalomTrainer() {
 
         {/* Vignette for depth */}
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(2,6,23,0.3) 100%)' }} />
+
+        {/* Atmospheric snow haze (speed-reactive) */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(180deg, rgba(255,255,255,${0.03 + highSpeedIntensity * 0.08}) 0%, rgba(255,255,255,0) 38%, rgba(148,163,184,${0.03 + highSpeedIntensity * 0.06}) 100%)`,
+            mixBlendMode: 'screen',
+          }}
+        />
 
         {/* Grooming lines */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ top: 70 }}>
@@ -639,6 +677,26 @@ export default function SlalomTrainer() {
           })}
         </svg>
 
+        {/* Course banners */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {BANNERS.map((b, idx) => {
+            const xPole = b.side === 'left' ? 44 : GAME_WIDTH - 44
+            const dir = b.side === 'left' ? 1 : -1
+            const wave = Math.sin((groundOffset + idx * 21) * 0.09) * 6
+            const y = (b.y + groundOffset * 1.1) % (GAME_HEIGHT + 120) - 60
+            return (
+              <g key={b.id} transform={`translate(${xPole}, ${y})`}>
+                <line x1="0" y1="-24" x2="0" y2="10" stroke="#111827" strokeWidth="2" opacity="0.7" />
+                <path
+                  d={`M 0 -22 Q ${dir * (14 + wave)} -18 ${dir * (26 + wave)} -12 L ${dir * (26 + wave)} -2 Q ${dir * (13 + wave)} -7 0 -8 Z`}
+                  fill={b.color}
+                  opacity="0.9"
+                />
+              </g>
+            )
+          })}
+        </svg>
+
         {/* Safety netting */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
           <line x1="48" y1="0" x2="48" y2={GAME_HEIGHT} stroke="#f97316" strokeWidth="2" opacity="0.72" />
@@ -683,6 +741,25 @@ export default function SlalomTrainer() {
               opacity={Math.max(0, p.life / 35)}
             />
           ))}
+
+          {/* Speed streaks */}
+          {highSpeedIntensity > 0.25 &&
+            [...Array(8)].map((_, i) => {
+              const y = 120 + i * 52 + (groundOffset * (1.4 + i * 0.03)) % 40
+              const len = 24 + highSpeedIntensity * 32
+              const op = 0.05 + highSpeedIntensity * 0.16
+              return (
+                <line
+                  key={`streak-${i}`}
+                  x1={60 + (i % 2) * 12}
+                  y1={y}
+                  x2={60 + (i % 2) * 12 + len}
+                  y2={y - 2}
+                  stroke={`rgba(255,255,255,${op})`}
+                  strokeWidth={1.2}
+                />
+              )
+            })}
 
           {Math.abs(skierLean) > 0.5 &&
             [...Array(8)].map((_, i) => (
