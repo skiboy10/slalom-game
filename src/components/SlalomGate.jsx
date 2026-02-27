@@ -1,4 +1,4 @@
-export default function SlalomGate({ x, y, side, hit, hitTime }) {
+export default function SlalomGate({ x, y, side, hit, hitTime, speed = 2.5 }) {
   const isLeft = side === 'left'
   const poleColor = isLeft ? '#dc2626' : '#1d4ed8'
   const poleColorLight = isLeft ? '#ef4444' : '#3b82f6'
@@ -19,6 +19,8 @@ export default function SlalomGate({ x, y, side, hit, hitTime }) {
     }
   }
 
+  const shadowOpacity = Math.min(0.3, 0.14 + speed * 0.015)
+
   return (
     <svg
       style={{
@@ -32,22 +34,23 @@ export default function SlalomGate({ x, y, side, hit, hitTime }) {
       }}
       viewBox="-40 -80 80 85"
     >
-      <ellipse cx={bendAngle * 0.2} cy={6} rx={12} ry={4} fill="rgba(0,0,0,0.15)" />
+      <ellipse cx={bendAngle * 0.2} cy={6} rx={13 + speed * 0.6} ry={4.2} fill={`rgba(0,0,0,${shadowOpacity})`} />
 
       <g>
-        <ellipse cx="0" cy="1" rx="8" ry="3" fill="#6b7280" />
-        <rect x="-3" y="-5" width="6" height="6" rx="1" fill="#374151" />
+        <ellipse cx="0" cy="1" rx="8" ry="3" fill="#64748b" />
+        <rect x="-3" y="-5" width="6" height="6" rx="1" fill="#334155" />
       </g>
 
       <g style={{ transformOrigin: '0px -2px', transform: `rotate(${bendAngle}deg)` }}>
         <rect x="-2.5" y="-75" width="5" height="73" rx="2.5" fill={poleColor} />
         {[0, 1, 2, 3].map(i => (
-          <rect key={i} x="-2.5" y={-75 + i * 18} width="5" height="7" fill="white" opacity="0.9" />
+          <rect key={i} x="-2.5" y={-75 + i * 18} width="5" height="7" fill="white" opacity="0.88" />
         ))}
 
         <g transform={`translate(${isLeft ? 4 : -28}, -70)`}>
           <rect x="0" y="0" width="24" height="16" rx="2" fill={poleColorLight} />
           <rect x="1" y="1" width="22" height="14" rx="1" fill={isLeft ? '#fecaca' : '#bfdbfe'} />
+          <rect x="2" y="2" width="20" height="2" fill="rgba(255,255,255,0.5)" />
         </g>
       </g>
     </svg>

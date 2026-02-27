@@ -8,6 +8,7 @@ body {
     Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #020617;
 }
 
 @keyframes feedbackPop {
@@ -17,5 +18,5 @@ body {
 }
 
 .feedback-pop {
-  animation: feedbackPop 0.4s ease-out forwards;
+  animation: feedbackPop 0.45s ease-out forwards;
 }

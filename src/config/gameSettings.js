@@ -32,8 +32,54 @@ export const PENALTIES = {
   PERFECT: 0,
   GOOD: 0.15,
   LATE: 0.35,
-  MISS: 2.0
+  MISS: 2.0,
 }
 
 // Max misses before DNF
 export const MAX_MISSES = 3
+
+// Difficulty presets for gameplay tuning
+export const DIFFICULTY_PRESETS = {
+  easy: {
+    key: 'easy',
+    label: 'Easy',
+    initialSpeed: 2.1,
+    maxSpeed: 6.5,
+    acceleration: 0.0055,
+    turnDeceleration: 0.18,
+    minGateSpacing: 145,
+    maxGateSpacing: 220,
+    perfectWindow: 30,
+    goodWindow: 60,
+    lateWindow: 105,
+    maxMisses: 5,
+  },
+  normal: {
+    key: 'normal',
+    label: 'Normal',
+    initialSpeed: INITIAL_SPEED,
+    maxSpeed: MAX_SPEED,
+    acceleration: ACCELERATION,
+    turnDeceleration: TURN_DECELERATION,
+    minGateSpacing: MIN_GATE_SPACING,
+    maxGateSpacing: MAX_GATE_SPACING,
+    perfectWindow: PERFECT_WINDOW,
+    goodWindow: GOOD_WINDOW,
+    lateWindow: LATE_WINDOW,
+    maxMisses: MAX_MISSES,
+  },
+  expert: {
+    key: 'expert',
+    label: 'Expert',
+    initialSpeed: 2.9,
+    maxSpeed: 9,
+    acceleration: 0.011,
+    turnDeceleration: 0.12,
+    minGateSpacing: 120,
+    maxGateSpacing: 180,
+    perfectWindow: 20,
+    goodWindow: 42,
+    lateWindow: 75,
+    maxMisses: 2,
+  },
+}
