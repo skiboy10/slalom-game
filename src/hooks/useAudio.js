@@ -83,10 +83,51 @@ export function useAudio() {
     oscillator.stop(audioCtx.currentTime + 0.15)
   }, [])
 
+  const playCrowdNoise = useCallback((duration = 3) => {
+    const audioCtx = audioCtxRef.current
+    if (!audioCtx) return
+
+    // Create crowd noise using filtered noise bursts
+    const createCheerVoice = (delay, pitch) => {
+      const noise = audioCtx.createBufferSource()
+      const bufferSize = audioCtx.sampleRate * duration
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate)
+      const data = buffer.getChannelData(0)
+
+      // Create modulated noise for crowd effect
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioCtx.sampleRate
+        const envelope = Math.sin(t * Math.PI / duration) // Fade in/out
+        const modulation = 0.7 + 0.3 * Math.sin(t * (3 + pitch)) // Varying intensity
+        data[i] = (Math.random() * 2 - 1) * envelope * modulation * 0.4
+      }
+      noise.buffer = buffer
+
+      const filter = audioCtx.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.value = 800 + pitch * 200
+      filter.Q.value = 0.5
+
+      const gainNode = audioCtx.createGain()
+      gainNode.gain.value = 0.15
+
+      noise.connect(filter)
+      filter.connect(gainNode)
+      gainNode.connect(audioCtx.destination)
+      noise.start(audioCtx.currentTime + delay)
+    }
+
+    // Layer multiple "voices" for crowd effect
+    for (let i = 0; i < 5; i++) {
+      createCheerVoice(Math.random() * 0.2, Math.random() * 3)
+    }
+  }, [])
+
   return {
     initAudio,
     playBeep,
     playCarveSound,
-    playGateHit
+    playGateHit,
+    playCrowdNoise
   }
 }

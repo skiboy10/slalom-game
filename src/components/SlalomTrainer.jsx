@@ -3,17 +3,19 @@ import {
   GAME_HEIGHT, GAME_WIDTH, SKIER_Y, GATE_SPAWN_Y, OPTIMAL_HIT_Y, GATE_Y,
   PERFECT_WINDOW, GOOD_WINDOW, LATE_WINDOW,
   INITIAL_SPEED, MAX_SPEED, ACCELERATION, TURN_DECELERATION,
-  MIN_GATE_SPACING, MAX_GATE_SPACING, TOTAL_GATES,
-  SKIER_CENTER_X, LEFT_POSITION, RIGHT_POSITION, MAX_MISSES
+  MIN_GATE_SPACING, MAX_GATE_SPACING, TOTAL_GATES, MAX_RACE_TIME,
+  SKIER_CENTER_X, LEFT_POSITION, RIGHT_POSITION, MAX_MISSES,
+  DIFFICULTY_PRESETS
 } from '../config/gameSettings'
 import { useAudio } from '../hooks/useAudio'
-import { generateSnowParticles, generateSparkles, generateTrees, generateCrowd } from '../utils/generators'
+import { generateSnowParticles, generateSparkles, generateTrees, generateCrowd, generateCourse } from '../utils/generators'
 import Skier from './Skier'
 import SlalomGate from './SlalomGate'
 import Spectator from './Spectator'
 import Tree from './Tree'
 import HUD from './HUD'
-import { StartScreen, CountdownScreen, FinishScreen, GameOverScreen } from './GameScreens'
+import { CountdownScreen, FinishScreen, GameOverScreen } from './GameScreens'
+import Lobby from './Lobby'
 
 // Pre-generate static elements
 const SPARKLES = generateSparkles(40)
@@ -23,7 +25,11 @@ const LEFT_CROWD = generateCrowd(15)
 const RIGHT_CROWD = generateCrowd(15)
 
 export default function SlalomTrainer() {
-  const [gameState, setGameState] = useState('start')
+  const [difficulty, setDifficulty] = useState('normal')
+  const diffSettings = DIFFICULTY_PRESETS[difficulty]
+
+  const [gameState, setGameState] = useState('lobby')
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [countdownValue, setCountdownValue] = useState(3)
   const [gates, setGates] = useState([])
   const [gateCount, setGateCount] = useState(0)
@@ -34,7 +40,28 @@ export default function SlalomTrainer() {
   const [raceTime, setRaceTime] = useState(0)
   const [splitTimes, setSplitTimes] = useState([])
   const [lastSplit, setLastSplit] = useState(null)
-  const [bestTime, setBestTime] = useState(null)
+  const [bestScores, setBestScores] = useState(() => {
+    try {
+      const stored = localStorage.getItem('slalom-bestScores')
+      if (stored) return JSON.parse(stored)
+      // Migrate from old single-best format
+      const legacy = localStorage.getItem('slalom-bestScore')
+      if (legacy) {
+        const migrated = { normal: JSON.parse(legacy) }
+        localStorage.setItem('slalom-bestScores', JSON.stringify(migrated))
+        localStorage.removeItem('slalom-bestScore')
+        return migrated
+      }
+      return {}
+    } catch { return {} }
+  })
+  const bestTime = bestScores[difficulty] || null
+  const [runHistory, setRunHistory] = useState(() => {
+    try {
+      const stored = localStorage.getItem('slalom-runHistory')
+      return stored ? JSON.parse(stored) : []
+    } catch { return [] }
+  })
 
   const [skierX, setSkierX] = useState(SKIER_CENTER_X)
   const [skierLean, setSkierLean] = useState(0)
@@ -46,8 +73,10 @@ export default function SlalomTrainer() {
   const [cameraShake, setCameraShake] = useState({ x: 0, y: 0 })
   const [snowParticles, setSnowParticles] = useState(() => generateSnowParticles(30))
   const [lastFeedback, setLastFeedback] = useState(null)
+  const [showFinishCrowd, setShowFinishCrowd] = useState(false)
+  const [timingBreakdown, setTimingBreakdown] = useState({ perfect: 0, good: 0, early: 0, late: 0, miss: 0 })
 
-  const { initAudio, playBeep, playCarveSound, playGateHit } = useAudio()
+  const { initAudio, playBeep, playCarveSound, playGateHit, playCrowdNoise } = useAudio()
 
   const gameLoopRef = useRef(null)
   const carveAnimationRef = useRef(null)
@@ -57,6 +86,8 @@ export default function SlalomTrainer() {
   const nextGateSpacingRef = useRef(150)
   const gateIdRef = useRef(0)
   const cheerTimeoutRef = useRef(null)
+  const courseRef = useRef([])
+  const courseIndexRef = useRef(0)
 
   // Countdown sequence
   useEffect(() => {
@@ -75,16 +106,23 @@ export default function SlalomTrainer() {
     }
   }, [gameState, countdownValue, initAudio, playBeep])
 
-  // Update race time
+  // Update race time and check for finish
   useEffect(() => {
     if (gameState !== 'playing') return
 
     const timer = setInterval(() => {
-      setRaceTime(Date.now() - raceStartTimeRef.current)
+      const currentTime = Date.now() - raceStartTimeRef.current
+      setRaceTime(currentTime)
+
+      // Show finish crowd in the last 5 seconds
+      if (currentTime >= MAX_RACE_TIME - 10000 && !showFinishCrowd) {
+        setShowFinishCrowd(true)
+        setCrowdCheering(true)
+      }
     }, 10)
 
     return () => clearInterval(timer)
-  }, [gameState])
+  }, [gameState, showFinishCrowd])
 
   // Animate cheering
   useEffect(() => {
@@ -141,14 +179,14 @@ export default function SlalomTrainer() {
       setCarvePhase(prev => {
         if (!prev) return null
 
-        const newProgress = prev.progress + 0.03
+        const newProgress = prev.progress + (prev.phase === 'approach' ? 0.08 : 0.05)
 
         if (newProgress >= 1) {
           if (prev.phase === 'approach') {
             return {
               phase: 'gate',
               startX: prev.targetX,
-              targetX: prev.gateX + (prev.gateSide === 'left' ? 20 : -20),
+              targetX: prev.gateX,
               progress: 0,
               gateX: prev.gateX,
               gateSide: prev.gateSide,
@@ -224,7 +262,7 @@ export default function SlalomTrainer() {
       const targetGate = updated.find(g =>
         !g.hit &&
         g.side === inputSide &&
-        g.y > OPTIMAL_HIT_Y - LATE_WINDOW &&
+        g.y > OPTIMAL_HIT_Y - diffSettings.LATE_WINDOW &&
         g.y < GATE_Y + 25
       )
 
@@ -249,7 +287,7 @@ export default function SlalomTrainer() {
           exitX: exitX
         })
 
-        setSpeed(prev => Math.max(INITIAL_SPEED, prev - TURN_DECELERATION))
+        setSpeed(prev => Math.max(diffSettings.INITIAL_SPEED, prev - TURN_DECELERATION))
 
         const distance = Math.abs(targetGate.y - OPTIMAL_HIT_Y)
         const currentTime = Date.now() - raceStartTimeRef.current
@@ -258,20 +296,26 @@ export default function SlalomTrainer() {
         let feedback = ''
         let feedbackColor = ''
 
-        if (distance <= PERFECT_WINDOW) {
+        if (distance <= diffSettings.PERFECT_WINDOW) {
           feedback = 'PERFECT'
           feedbackColor = '#22c55e'
+          setTimingBreakdown(prev => ({ ...prev, perfect: prev.perfect + 1 }))
           setCrowdCheering(true)
           if (cheerTimeoutRef.current) clearTimeout(cheerTimeoutRef.current)
           cheerTimeoutRef.current = setTimeout(() => setCrowdCheering(false), 1200)
-        } else if (distance <= GOOD_WINDOW) {
+        } else if (distance <= diffSettings.GOOD_WINDOW) {
           timePenalty = 0.15
           feedback = 'GOOD'
           feedbackColor = '#3b82f6'
-        } else if (distance <= LATE_WINDOW) {
+          setTimingBreakdown(prev => ({ ...prev, good: prev.good + 1 }))
+        } else if (distance <= diffSettings.LATE_WINDOW) {
           timePenalty = 0.35
           feedback = distance < OPTIMAL_HIT_Y ? 'EARLY' : 'LATE'
           feedbackColor = '#f59e0b'
+          setTimingBreakdown(prev => {
+            const key = distance < OPTIMAL_HIT_Y ? 'early' : 'late'
+            return { ...prev, [key]: prev[key] + 1 }
+          })
         }
 
         setLastFeedback({ text: feedback, color: feedbackColor, penalty: timePenalty, id: Date.now() })
@@ -306,7 +350,7 @@ export default function SlalomTrainer() {
         handleInput('left')
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
         handleInput('right')
-      } else if (e.key === ' ' && (gameState === 'start' || gameState === 'finished' || gameState === 'gameOver')) {
+      } else if (e.key === ' ' && (gameState === 'lobby' || gameState === 'finished' || gameState === 'gameOver')) {
         startGame()
       }
     }
@@ -321,7 +365,7 @@ export default function SlalomTrainer() {
 
     const gameLoop = () => {
       setGroundOffset(prev => (prev + speed) % 40)
-      setSpeed(prev => Math.min(MAX_SPEED, prev + ACCELERATION))
+      setSpeed(prev => Math.min(diffSettings.MAX_SPEED, prev + diffSettings.ACCELERATION))
 
       setGates(prev => {
         let newMisses = 0
@@ -338,34 +382,39 @@ export default function SlalomTrainer() {
 
         if (newMisses > 0) {
           setMisses(m => m + newMisses)
+          setTimingBreakdown(prev => ({ ...prev, miss: prev.miss + newMisses }))
           setLastFeedback({ text: 'MISS', color: '#ef4444', penalty: 2.0, id: Date.now() })
         }
 
-        if (gateCount < TOTAL_GATES) {
+        // Spawn gates from the pre-generated course
+        const currentTime = Date.now() - raceStartTimeRef.current
+        const course = courseRef.current
+        if (courseIndexRef.current < course.length) {
           lastGateSpawnRef.current += speed
           if (lastGateSpawnRef.current >= nextGateSpacingRef.current) {
-            const side = nextGateSideRef.current
-            nextGateSideRef.current = side === 'left' ? 'right' : 'left'
-
-            const baseX = side === 'left' ? GAME_WIDTH * 0.32 : GAME_WIDTH * 0.68
-            const variation = (Math.random() - 0.5) * 25
+            const courseGate = course[courseIndexRef.current]
+            courseIndexRef.current += 1
 
             gateIdRef.current += 1
 
             const newGate = {
               id: gateIdRef.current,
               y: GATE_SPAWN_Y,
-              x: baseX + variation,
-              side: side,
+              x: courseGate.x,
+              side: courseGate.side,
               hit: false,
               hitTime: null,
-              gateNumber: gateCount + 1
+              gateNumber: gateCount + 1,
+              pattern: courseGate.pattern
             }
 
             updated = [...updated, newGate]
             setGateCount(c => c + 1)
 
-            nextGateSpacingRef.current = MIN_GATE_SPACING + Math.random() * (MAX_GATE_SPACING - MIN_GATE_SPACING)
+            // Set spacing for the NEXT gate
+            if (courseIndexRef.current < course.length) {
+              nextGateSpacingRef.current = course[courseIndexRef.current].spacing
+            }
             lastGateSpawnRef.current = 0
           }
         }
@@ -387,20 +436,39 @@ export default function SlalomTrainer() {
     if (gameState !== 'playing') return
 
     if (misses >= MAX_MISSES) {
+      const run = { gates: gatesCleared, misses, timing: { ...timingBreakdown }, ts: Date.now(), result: 'dnf', difficulty }
+      setRunHistory(prev => {
+        const updated = [run, ...prev].slice(0, 20)
+        try { localStorage.setItem('slalom-runHistory', JSON.stringify(updated)) } catch {}
+        return updated
+      })
       setGameState('gameOver')
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current)
-    } else if (gatesCleared >= TOTAL_GATES) {
-      const finalTime = Date.now() - raceStartTimeRef.current
-      setRaceTime(finalTime)
-      if (!bestTime || finalTime < bestTime) {
-        setBestTime(finalTime)
+    } else if (raceTime >= MAX_RACE_TIME) {
+      setRaceTime(MAX_RACE_TIME)
+      const currentBest = bestScores[difficulty]
+      const isNewBest = !currentBest || gatesCleared > (currentBest.gates || 0)
+      if (isNewBest) {
+        const newBest = { time: MAX_RACE_TIME, gates: gatesCleared }
+        setBestScores(prev => {
+          const updated = { ...prev, [difficulty]: newBest }
+          try { localStorage.setItem('slalom-bestScores', JSON.stringify(updated)) } catch {}
+          return updated
+        })
       }
+      const run = { gates: gatesCleared, misses, timing: { ...timingBreakdown }, ts: Date.now(), result: 'finish', difficulty }
+      setRunHistory(prev => {
+        const updated = [run, ...prev].slice(0, 20)
+        try { localStorage.setItem('slalom-runHistory', JSON.stringify(updated)) } catch {}
+        return updated
+      })
       setGameState('finished')
       setCrowdCheering(true)
+      playCrowdNoise(3)
       playBeep(880, 0.5, 0.4)
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current)
     }
-  }, [misses, gatesCleared, gameState, bestTime, playBeep])
+  }, [misses, raceTime, gatesCleared, gameState, bestTime, timingBreakdown, playBeep, playCrowdNoise])
 
   const startGame = () => {
     initAudio()
@@ -409,24 +477,42 @@ export default function SlalomTrainer() {
     setGateCount(0)
     setGatesCleared(0)
     setMisses(0)
-    setSpeed(INITIAL_SPEED)
+    setSpeed(diffSettings.INITIAL_SPEED)
     setRaceTime(0)
     setSplitTimes([])
     setLastSplit(null)
     setLastFeedback(null)
+    setTimingBreakdown({ perfect: 0, good: 0, early: 0, late: 0, miss: 0 })
     setSkierX(SKIER_CENTER_X)
     setSkierLean(0)
     setSkierTrail([])
     setCarvePhase(null)
     setGroundOffset(0)
     setCrowdCheering(false)
+    setShowFinishCrowd(false)
     setCameraShake({ x: 0, y: 0 })
     setCountdownValue(3)
     lastGateSpawnRef.current = 0
+    courseRef.current = generateCourse(difficulty)
+    courseIndexRef.current = 0
     nextGateSideRef.current = 'left'
-    nextGateSpacingRef.current = 150
+    nextGateSpacingRef.current = courseRef.current.length > 0 ? courseRef.current[0].spacing : (diffSettings.MIN_GATE_SPACING || MIN_GATE_SPACING)
     gateIdRef.current = 0
     setGameState('countdown')
+  }
+
+  if (gameState === 'lobby') {
+    return (
+      <Lobby
+        onStart={startGame}
+        bestScores={bestScores}
+        runHistory={runHistory}
+        difficulty={difficulty}
+        onDifficultyChange={setDifficulty}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled(prev => !prev)}
+      />
+    )
   }
 
   return (
@@ -575,16 +661,85 @@ export default function SlalomTrainer() {
 
         {/* HUD */}
         {gameState === 'playing' && (
-          <HUD raceTime={raceTime} gatesCleared={gatesCleared} speed={speed} misses={misses} bestTime={bestTime} />
+          <HUD raceTime={raceTime} gatesCleared={gatesCleared} speed={speed} misses={misses} bestTime={bestTime} maxTime={MAX_RACE_TIME} difficulty={difficulty} />
+        )}
+
+        {/* Restart button during gameplay */}
+        {gameState === 'playing' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              startGame()
+            }}
+            className="absolute top-2 right-2 px-3 py-1 bg-slate-800/70 hover:bg-slate-700/80 text-white text-xs rounded transition-colors"
+          >
+            Restart
+          </button>
+        )}
+
+        {/* Finish line crowd */}
+        {showFinishCrowd && gameState === 'playing' && (
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+            {/* Finish line banner */}
+            <div className="absolute bottom-24 left-12 right-12 h-8 flex">
+              <div className="flex-1 bg-gradient-to-r from-black via-white to-black bg-[length:20px_100%] opacity-80" />
+            </div>
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-white font-bold text-lg bg-red-600 px-4 py-1 rounded shadow-lg">
+              FINISH
+            </div>
+
+            {/* Dense crowd at finish */}
+            <svg className="w-full h-32" viewBox="0 0 400 128">
+              {/* Left crowd */}
+              {[...Array(12)].map((_, i) => {
+                const x = 15 + (i % 3) * 12 + Math.random() * 5
+                const y = 60 + Math.floor(i / 3) * 18
+                const colors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899']
+                const color = colors[i % colors.length]
+                const bounce = crowdCheering ? Math.sin(cheerPhase + i) * 3 : 0
+                return (
+                  <g key={`left-${i}`} transform={`translate(${x}, ${y + bounce})`}>
+                    <circle cx="0" cy="-8" r="4" fill="#fcd9b6" />
+                    <rect x="-5" y="-4" width="10" height="12" rx="2" fill={color} />
+                    {crowdCheering && (
+                      <>
+                        <line x1="-5" y1="-2" x2="-9" y2={-8 - Math.sin(cheerPhase + i) * 4} stroke={color} strokeWidth="2" />
+                        <line x1="5" y1="-2" x2="9" y2={-8 - Math.cos(cheerPhase + i) * 4} stroke={color} strokeWidth="2" />
+                      </>
+                    )}
+                  </g>
+                )
+              })}
+              {/* Right crowd */}
+              {[...Array(12)].map((_, i) => {
+                const x = 355 + (i % 3) * 12 + Math.random() * 5
+                const y = 60 + Math.floor(i / 3) * 18
+                const colors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899']
+                const color = colors[(i + 3) % colors.length]
+                const bounce = crowdCheering ? Math.sin(cheerPhase + i + 1) * 3 : 0
+                return (
+                  <g key={`right-${i}`} transform={`translate(${x}, ${y + bounce})`}>
+                    <circle cx="0" cy="-8" r="4" fill="#fcd9b6" />
+                    <rect x="-5" y="-4" width="10" height="12" rx="2" fill={color} />
+                    {crowdCheering && (
+                      <>
+                        <line x1="-5" y1="-2" x2="-9" y2={-8 - Math.sin(cheerPhase + i + 1) * 4} stroke={color} strokeWidth="2" />
+                        <line x1="5" y1="-2" x2="9" y2={-8 - Math.cos(cheerPhase + i + 1) * 4} stroke={color} strokeWidth="2" />
+                      </>
+                    )}
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
         )}
 
         {/* Game Screens */}
         {gameState === 'countdown' && <CountdownScreen value={countdownValue} />}
-        {gameState === 'start' && <StartScreen onStart={startGame} bestTime={bestTime} />}
         {gameState === 'finished' && (
-          <FinishScreen raceTime={raceTime} bestTime={bestTime} gatesCleared={gatesCleared} misses={misses} onRestart={startGame} />
+          <FinishScreen bestTime={bestTime} gatesCleared={gatesCleared} misses={misses} timingBreakdown={timingBreakdown} onRestart={startGame} onLobby={() => setGameState('lobby')} />
         )}
-        {gameState === 'gameOver' && <GameOverScreen gatesCleared={gatesCleared} onRestart={startGame} />}
+        {gameState === 'gameOver' && <GameOverScreen gatesCleared={gatesCleared} timingBreakdown={timingBreakdown} onRestart={startGame} onLobby={() => setGameState('lobby')} />}
       </div>
 
       {/* Controls hint */}

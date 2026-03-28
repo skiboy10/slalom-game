@@ -1,7 +1,7 @@
 export default function SlalomGate({ x, y, side, hit, hitTime }) {
   const isLeft = side === 'left'
-  const poleColor = isLeft ? '#dc2626' : '#1d4ed8'
-  const poleColorLight = isLeft ? '#ef4444' : '#3b82f6'
+  const poleColor = isLeft ? '#1d4ed8' : '#dc2626'
+  const poleColorLight = isLeft ? '#3b82f6' : '#ef4444'
 
   const timeSinceHit = hit ? Date.now() - hitTime : 0
   const bendPhase = Math.min(timeSinceHit / 250, 1)
@@ -47,7 +47,7 @@ export default function SlalomGate({ x, y, side, hit, hitTime }) {
 
         <g transform={`translate(${isLeft ? 4 : -28}, -70)`}>
           <rect x="0" y="0" width="24" height="16" rx="2" fill={poleColorLight} />
-          <rect x="1" y="1" width="22" height="14" rx="1" fill={isLeft ? '#fecaca' : '#bfdbfe'} />
+          <rect x="1" y="1" width="22" height="14" rx="1" fill={isLeft ? '#bfdbfe' : '#fecaca'} />
         </g>
       </g>
     </svg>
