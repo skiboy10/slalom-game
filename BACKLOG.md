@@ -95,6 +95,7 @@ RIGHT_POSITION = GAME_WIDTH * 0.78  // 312
 
 ## Future Ideas (Unprioritized)
 
+- [ ] Realistic 3D Physics (collision detection, skier falling on impact with trees/gates)
 - [ ] Difficulty levels (gate spacing, speed progression)
 - [ ] Sound toggle / volume controls
 - [ ] Touch/swipe controls for mobile

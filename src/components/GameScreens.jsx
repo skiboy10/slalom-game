@@ -5,8 +5,8 @@ export function StartScreen({ onStart, bestTime, runHistory, difficulty, onDiffi
   const recentRuns = (runHistory || []).slice(0, 5)
   return (
     <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-sm">
-      <h2 className="text-3xl font-bold mb-1">SLALOM</h2>
-      <p className="text-slate-300 mb-3">Timing Trainer</p>
+      <h2 className="text-3xl font-bold mb-1">SKI RACING</h2>
+      <p className="text-slate-300 mb-3">Hit the Slopes!</p>
       <div className="text-center mb-3 px-6 text-slate-300 text-sm space-y-1">
         <p><span className="text-blue-400 font-bold">← LEFT</span> for blue gates</p>
         <p><span className="text-red-400 font-bold">RIGHT →</span> for red gates</p>
@@ -87,18 +87,67 @@ function TimingBar({ breakdown }) {
   )
 }
 
-export function FinishScreen({ bestTime, gatesCleared, misses, timingBreakdown, onRestart, onLobby }) {
+function ComboStat({ maxCombo }) {
+  if (!maxCombo || maxCombo < 2) return null
+  let tierLabel = ''
+  let tierColor = 'text-slate-300'
+  if (maxCombo >= 20) { tierLabel = 'LEGENDARY'; tierColor = 'text-yellow-400' }
+  else if (maxCombo >= 10) { tierLabel = 'ON FIRE'; tierColor = 'text-orange-400' }
+  else if (maxCombo >= 5) { tierLabel = 'HOT'; tierColor = 'text-red-400' }
+
+  return (
+    <div className="text-sm mb-1 flex items-center gap-2 justify-center">
+      <span className="text-slate-400">Best Combo:</span>
+      <span className={`font-bold ${tierColor}`}>{maxCombo}</span>
+      {tierLabel && <span className={`text-xs font-bold ${tierColor}`}>{tierLabel}</span>}
+    </div>
+  )
+}
+
+export function FinishScreen({ bestTime, gatesCleared, misses, timingBreakdown, maxCombo, creditsEarned, isNewRecord, comboHighlight, bigAirBonus = 0, isDailyChallenge, onRestart, onLobby }) {
   const isNewBest = bestTime && bestTime.gates === gatesCleared
+
+  // Build the run highlight text
+  const highlightText = (() => {
+    if (!comboHighlight || comboHighlight.combo < 2) return null
+    if (comboHighlight.combo >= 5) {
+      return `Best moment: ${comboHighlight.combo}x combo at gate #${comboHighlight.gateNumber}!`
+    }
+    return `Highlight: ${comboHighlight.combo}x combo at gate #${comboHighlight.gateNumber}`
+  })()
+
   return (
     <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+      {isDailyChallenge && (
+        <div className="mb-2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-black tracking-widest uppercase shadow-lg">
+          📅 Daily Challenge
+        </div>
+      )}
       <div className="text-green-400 text-xl mb-1">FINISH</div>
       <div className="text-5xl font-bold font-mono text-yellow-400 mb-2">{gatesCleared}</div>
       <div className="text-slate-300 text-lg mb-2">gates cleared</div>
-      {isNewBest && <div className="text-green-400 text-lg mb-2">NEW BEST!</div>}
+      {bigAirBonus > 0 && (
+        <div className="text-cyan-400 text-sm font-bold mb-2 bg-cyan-400/10 px-3 py-1 rounded-lg border border-cyan-400/20">
+          +{bigAirBonus} Big Air Bonus {bigAirBonus === 1 ? 'Gate' : 'Gates'}!
+        </div>
+      )}
+      {isNewRecord && (
+        <div className="new-record-text text-2xl font-bold mb-2">NEW RECORD!</div>
+      )}
+      {!isNewRecord && isNewBest && <div className="text-green-400 text-lg mb-2">NEW BEST!</div>}
       {timingBreakdown && <TimingBar breakdown={timingBreakdown} />}
-      <div className="text-slate-400 text-sm mb-4">
+      <ComboStat maxCombo={maxCombo} />
+      {highlightText && (
+        <div className="text-slate-300 text-xs italic mb-1 px-4 text-center">{highlightText}</div>
+      )}
+      <div className="text-slate-400 text-sm mb-2">
         Misses: {misses}
       </div>
+      {creditsEarned > 0 && (
+        <div className="text-yellow-300 text-sm font-bold mb-3 bg-yellow-400/10 px-4 py-1.5 rounded-lg border border-yellow-400/20">
+          \uD83E\uDE99 Credits Earned: +{creditsEarned}
+        </div>
+      )}
       <div className="flex gap-3">
         <button onClick={onRestart} className="px-6 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-bold">
           RESTART
@@ -111,7 +160,7 @@ export function FinishScreen({ bestTime, gatesCleared, misses, timingBreakdown, 
   )
 }
 
-export function GameOverScreen({ gatesCleared, timingBreakdown, onRestart, onLobby }) {
+export function GameOverScreen({ gatesCleared, timingBreakdown, maxCombo, creditsEarned, onRestart, onLobby }) {
   return (
     <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white backdrop-blur-sm">
       <div className="text-red-400 text-2xl mb-2">DNF</div>
@@ -120,6 +169,12 @@ export function GameOverScreen({ gatesCleared, timingBreakdown, onRestart, onLob
         Gates cleared: {gatesCleared}
       </div>
       {timingBreakdown && <TimingBar breakdown={timingBreakdown} />}
+      <ComboStat maxCombo={maxCombo} />
+      {creditsEarned > 0 && (
+        <div className="text-yellow-300 text-sm font-bold mb-2 bg-yellow-400/10 px-4 py-1.5 rounded-lg border border-yellow-400/20">
+          \uD83E\uDE99 Credits Earned: +{creditsEarned}
+        </div>
+      )}
       <div className="flex gap-3 mt-2">
         <button onClick={onRestart} className="px-6 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-bold">
           RESTART

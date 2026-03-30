@@ -41,16 +41,21 @@ export const PENALTIES = {
 // Max misses before DNF
 export const MAX_MISSES = 3
 
-// Difficulty presets
+// Speed presets (independent from difficulty)
+export const SPEED_PRESETS = {
+  slow: { INITIAL_SPEED: 2, MAX_SPEED: 4, ACCELERATION: 0.003 },
+  normal: { INITIAL_SPEED: 3, MAX_SPEED: 6, ACCELERATION: 0.005 },
+  fast: { INITIAL_SPEED: 4, MAX_SPEED: 8, ACCELERATION: 0.007 },
+  turbo: { INITIAL_SPEED: 5, MAX_SPEED: 10, ACCELERATION: 0.01 },
+}
+
+// Difficulty presets (timing windows and gate spacing only)
 export const DIFFICULTY_PRESETS = {
   easy: {
     label: 'Easy',
     PERFECT_WINDOW: 35,
     GOOD_WINDOW: 65,
     LATE_WINDOW: 110,
-    ACCELERATION: 0.006,
-    MAX_SPEED: 6,
-    INITIAL_SPEED: 2.0,
     MIN_GATE_SPACING: 300,
     MAX_GATE_SPACING: 420,
   },
@@ -59,9 +64,6 @@ export const DIFFICULTY_PRESETS = {
     PERFECT_WINDOW: 25,
     GOOD_WINDOW: 50,
     LATE_WINDOW: 90,
-    ACCELERATION: 0.008,
-    MAX_SPEED: 8,
-    INITIAL_SPEED: 2.5,
     MIN_GATE_SPACING: 220,
     MAX_GATE_SPACING: 320,
   },
@@ -70,10 +72,97 @@ export const DIFFICULTY_PRESETS = {
     PERFECT_WINDOW: 15,
     GOOD_WINDOW: 35,
     LATE_WINDOW: 65,
-    ACCELERATION: 0.012,
-    MAX_SPEED: 10,
-    INITIAL_SPEED: 3.0,
     MIN_GATE_SPACING: 150,
     MAX_GATE_SPACING: 220,
+  },
+}
+
+// Discipline presets
+// SL (Slalom): tight spacing, rapid turn-to-turn, single-pole gates, narrow gate width
+// GS (Giant Slalom): wider spacing, long sweeping arcs, dual-pole wide panel gates
+// World Tour locations — each maps to a difficulty + speed + optional flags
+export const WORLD_TOUR_LOCATIONS = [
+  {
+    id: 'bunny-hill',
+    name: 'Bunny Hill',
+    emoji: '⛷️',
+    difficulty: 'easy',
+    speed: 'normal',
+    themeColor: '#22c55e',
+    description: 'Where legends begin',
+    unlockRequirement: null, // always unlocked
+    unlockText: null,
+    nightMode: false,
+  },
+  {
+    id: 'aspen',
+    name: 'Aspen',
+    emoji: '🏔️',
+    difficulty: 'normal',
+    speed: 'normal',
+    themeColor: '#3b82f6',
+    description: 'Classic Colorado skiing',
+    unlockRequirement: null, // always unlocked
+    unlockText: null,
+    nightMode: false,
+  },
+  {
+    id: 'the-alps',
+    name: 'The Alps',
+    emoji: '🗻',
+    difficulty: 'hard',
+    speed: 'normal',
+    themeColor: '#ef4444',
+    description: 'Only the brave',
+    unlockRequirement: 'totalGates20',
+    unlockText: 'Clear 20 total gates',
+    nightMode: false,
+  },
+  {
+    id: 'tokyo-night',
+    name: 'Tokyo Night',
+    emoji: '🌃',
+    difficulty: 'normal',
+    speed: 'normal',
+    themeColor: '#a855f7',
+    description: 'Neon lights, fresh powder',
+    unlockRequirement: 'finishNoDNF',
+    unlockText: 'Finish a run without DNF',
+    nightMode: true,
+  },
+  {
+    id: 'mt-olympus',
+    name: 'Mt. Olympus',
+    emoji: '⚡',
+    difficulty: 'hard',
+    speed: 'fast',
+    themeColor: '#fbbf24',
+    description: 'Home of the gods',
+    unlockRequirement: 'combo15',
+    unlockText: 'Get a 15+ combo',
+    nightMode: false,
+  },
+]
+
+export const DISCIPLINE_PRESETS = {
+  sl: {
+    label: 'Slalom',
+    shortLabel: 'SL',
+    description: 'Rapid-fire gates, quick reflexes',
+    // Multipliers applied on top of difficulty spacing
+    spacingMultiplier: 1.0,
+    // Skier travel distance per gate (narrower arc)
+    arcWidth: 1.0,
+    gateStyle: 'sl',
+  },
+  gs: {
+    label: 'Giant Slalom',
+    shortLabel: 'GS',
+    description: 'Wide arcs, longer intervals',
+    // GS gates are spaced roughly 1.6x further apart than SL
+    spacingMultiplier: 1.6,
+    // Wider arc — skier travels more side-to-side
+    arcWidth: 1.25,
+    gateStyle: 'gs',
   },
 }

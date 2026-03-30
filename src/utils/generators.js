@@ -1,4 +1,41 @@
-import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameSettings'
+import { GAME_HEIGHT, GAME_WIDTH, DISCIPLINE_PRESETS } from '../config/gameSettings'
+
+/**
+ * Mulberry32 seeded PRNG — returns a closure that behaves like Math.random().
+ * Given the same seed it always produces the same sequence.
+ */
+export const createSeededRandom = (seed) => {
+  let s = seed >>> 0 // ensure unsigned 32-bit
+  return () => {
+    s += 0x6d2b79f5
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Returns today's date as a YYYYMMDD integer — same number for all players on the same calendar day.
+ * Uses local time so the day turns over at midnight for each player (acceptable for a daily challenge).
+ */
+export const getDailySeed = () => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return Number(`${y}${m}${d}`)
+}
+
+/**
+ * Returns today's date as a YYYY-MM-DD string for localStorage keys and display.
+ */
+export const getTodayString = () => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
 export const generateSnowParticles = (count) => {
   return Array.from({ length: count }, (_, i) => ({
@@ -55,62 +92,66 @@ export const generateCrowd = (count) => {
  * Gate patterns:
  *   rhythm  - standard alternating turns, normal spacing
  *   hairpin - 2 quick turns very close together (like real hairpin combos)
- *   flush   - 3 rapid gates in a row (like a real flush combo)
  *   delay   - one big gap before the next gate (like a real delay combo)
+ *
+ * NOTE: flush (straight-through) gates have been intentionally removed.
+ * Every gate requires the skier to go around it — no straight-through sequences.
  */
-export const generateCourse = (difficulty = 'normal') => {
+export const generateCourse = (difficulty = 'normal', discipline = 'sl', seed = null) => {
+  // Use a seeded RNG when a seed is provided, otherwise fall back to Math.random
+  const rng = seed !== null ? createSeededRandom(seed) : Math.random
+  const disciplinePreset = DISCIPLINE_PRESETS[discipline] || DISCIPLINE_PRESETS.sl
+  const spacingMult = disciplinePreset.spacingMultiplier
   // Gate spacing targets ~0.75s to ~1.5s between gates
   // At average speed ~4-5 px/frame at 60fps = ~250 px/sec
   // 0.75s = ~190px, 1.0s = ~250px, 1.5s = ~375px
-  const config = {
+  const baseConfig = {
     easy: {
-      rhythmSpacing: [280, 420],   // ~1.1s to ~1.7s — relaxed pace
-      hairpinSpacing: [180, 240],   // ~0.75s to ~1.0s — quick but doable
-      flushSpacing: [170, 220],     // ~0.7s to ~0.9s
-      delaySpacing: [500, 650],     // big breather gap
-      hairpins: [2, 4],
-      flushes: [0, 1],
-      delays: [1, 3],
+      rhythmSpacing: [220, 340],
+      hairpinSpacing: [160, 220],
+      delaySpacing: [280, 360],
+      hairpins: [3, 5],
+      delays: [1, 2],
       openingRhythm: 6,
-      closingRhythm: 4,
-      rhythmFill: 22,              // lots of rhythm gates to fill 90s
+      rhythmFill: 22,
     },
     normal: {
-      rhythmSpacing: [230, 370],   // ~0.9s to ~1.5s
-      hairpinSpacing: [150, 210],   // ~0.6s to ~0.85s — fast pairs
-      flushSpacing: [140, 190],     // ~0.55s to ~0.75s — rapid fire
-      delaySpacing: [450, 580],     // big gap
-      hairpins: [3, 6],
-      flushes: [2, 4],
-      delays: [2, 3],
+      rhythmSpacing: [190, 300],
+      hairpinSpacing: [140, 200],
+      delaySpacing: [250, 330],
+      hairpins: [4, 7],
+      delays: [1, 2],
       openingRhythm: 5,
-      closingRhythm: 3,
       rhythmFill: 18,
     },
     hard: {
-      rhythmSpacing: [190, 310],   // ~0.75s to ~1.25s — tight
-      hairpinSpacing: [120, 180],   // ~0.5s to ~0.7s — really fast
-      flushSpacing: [110, 160],     // ~0.45s to ~0.65s — rapid fire
-      delaySpacing: [400, 520],
-      hairpins: [4, 7],
-      flushes: [3, 5],
-      delays: [2, 4],
+      rhythmSpacing: [160, 260],
+      hairpinSpacing: [110, 170],
+      delaySpacing: [220, 300],
+      hairpins: [5, 8],
+      delays: [1, 2],
       openingRhythm: 4,
-      closingRhythm: 3,
       rhythmFill: 15,
     },
   }
 
-  const c = config[difficulty] || config.normal
+  const base = baseConfig[difficulty] || baseConfig.normal
 
-  const randBetween = (min, max) => min + Math.random() * (max - min)
+  // Apply discipline spacing multiplier to all spacing ranges
+  const c = {
+    ...base,
+    rhythmSpacing: [base.rhythmSpacing[0] * spacingMult, base.rhythmSpacing[1] * spacingMult],
+    hairpinSpacing: [base.hairpinSpacing[0] * spacingMult, base.hairpinSpacing[1] * spacingMult],
+    delaySpacing: [base.delaySpacing[0] * spacingMult, base.delaySpacing[1] * spacingMult],
+  }
+
+  const randBetween = (min, max) => min + rng() * (max - min)
   const randInt = (min, max) => Math.floor(randBetween(min, max + 1))
 
   // Estimate total distance the skier will travel in 90 seconds.
-  // Speed ramps from INITIAL to MAX. Average speed is roughly the midpoint.
-  // At 60fps, average ~5 px/frame = ~300 px/sec, over 90s = ~27000 px total.
-  // We generate enough gates to cover that distance, with a safety margin.
-  const targetDistance = 40000
+  // Speed ramps from INITIAL to MAX. At high speeds ~10 px/frame = ~600 px/sec.
+  // Over 90s at high speed = ~54000 px. Use 70000 to guarantee gates all the way to the finish.
+  const targetDistance = 70000
 
   // Build the course gate-by-gate
   const gates = []
@@ -119,14 +160,39 @@ export const generateCourse = (difficulty = 'normal') => {
   let currentPattern = 'rhythm'
   const flip = () => { currentSide = currentSide === 'left' ? 'right' : 'left' }
 
+  // Gate opening width: SL = narrow, GS = wide
+  // The inner pole defines one edge of the gate.
+  // Left gate: inner pole on left side, skier passes to the RIGHT of it.
+  // Right gate: inner pole on right side, skier passes to the LEFT of it.
+  const openingWidth = discipline === 'gs' ? 80 : 50  // px
+
   const addGate = (spacing) => {
-    const baseX = currentSide === 'left' ? GAME_WIDTH * 0.32 : GAME_WIDTH * 0.68
-    const variation = (Math.random() - 0.5) * 25
+    const isLeft = currentSide === 'left'
+    // Inner pole position — how far from center the pole sits
+    const innerPoleVariation = (rng() - 0.5) * 30
+    const innerX = isLeft
+      ? GAME_WIDTH * 0.28 + innerPoleVariation   // left gate: inner pole left of center
+      : GAME_WIDTH * 0.72 + innerPoleVariation   // right gate: inner pole right of center
+    const outerX = isLeft
+      ? innerX - openingWidth * 0.6              // outer pole further left
+      : innerX + openingWidth * 0.6              // outer pole further right
+
+    // Opening: the range of skier X that counts as "inside the gate"
+    // Left gate: skier must be between innerX and innerX + openingWidth (to the right of inner pole)
+    // Right gate: skier must be between innerX - openingWidth and innerX (to the left of inner pole)
+    const openStart = isLeft ? innerX : innerX - openingWidth
+    const openEnd = isLeft ? innerX + openingWidth : innerX
+
     gates.push({
       side: currentSide,
       spacing: spacing,
-      x: baseX + variation,
+      x: innerX,            // kept for backwards compat / rendering anchor
+      innerX,
+      outerX,
+      openStart,
+      openEnd,
       pattern: currentPattern,
+      discipline,
     })
     totalSpacing += spacing
     flip()
@@ -141,14 +207,12 @@ export const generateCourse = (difficulty = 'normal') => {
   // Build combo pools — these get sprinkled throughout
   const combos = []
   const numHairpins = randInt(c.hairpins[0], c.hairpins[1])
-  const numFlushes = randInt(c.flushes[0], c.flushes[1])
   const numDelays = randInt(c.delays[0], c.delays[1])
   for (let i = 0; i < numHairpins; i++) combos.push('hairpin')
-  for (let i = 0; i < numFlushes; i++) combos.push('flush')
   for (let i = 0; i < numDelays; i++) combos.push('delay')
   // Shuffle combos
   for (let i = combos.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [combos[i], combos[j]] = [combos[j], combos[i]]
   }
 
@@ -169,11 +233,6 @@ export const generateCourse = (difficulty = 'normal') => {
         currentPattern = 'hairpin'
         addGate(randBetween(c.hairpinSpacing[0], c.hairpinSpacing[1]))
         addGate(randBetween(c.hairpinSpacing[0], c.hairpinSpacing[1]))
-      } else if (combo === 'flush') {
-        currentPattern = 'flush'
-        addGate(randBetween(c.flushSpacing[0], c.flushSpacing[1]))
-        addGate(randBetween(c.flushSpacing[0], c.flushSpacing[1]))
-        addGate(randBetween(c.flushSpacing[0], c.flushSpacing[1]))
       } else if (combo === 'delay') {
         currentPattern = 'delay'
         addGate(randBetween(c.delaySpacing[0], c.delaySpacing[1]))
@@ -185,8 +244,8 @@ export const generateCourse = (difficulty = 'normal') => {
       rhythmCount++
     }
 
-    // Safety: don't generate more than 200 gates
-    if (gates.length >= 200) break
+    // Safety: don't generate more than 350 gates
+    if (gates.length >= 350) break
   }
 
   return gates

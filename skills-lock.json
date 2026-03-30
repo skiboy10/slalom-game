@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "elite-accessibility": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "2786648eac2d4c6b77407580ec2ca3cc35ceae79873c422e8061e1e75a57d924"
+    },
+    "elite-audit": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "b973363f6ebd5c4a745d9430f59441cf54a20a34a6d6b082f32511f630802980"
+    },
+    "elite-brand-design": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "684f3e26c0449121e6bd0fd327f2eed935f1e1f1ebbebc2c55dc1cec8de4fdcf"
+    },
+    "elite-css-animations": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "6e9f75761702bbd582880224cc06f12e4219c0e5b44769179b4674e74dc49779"
+    },
+    "elite-design-core": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "b44f77919a10e7eb99753b717276ee7be77490df111c306759b53ce68c3b9a7c"
+    },
+    "elite-gsap": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "a4c9997b30435c0d1b35a64ce194bef8b41fd9251974f402b1f6666b653f587b"
+    },
+    "elite-inspiration": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "934b8ff759753f2b08ca1a97b9de51e7c751263d010cda84338a89c6edcd033a"
+    },
+    "elite-layouts": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "a307bec481bb15d2c51524e71bc5d66163fa03d8efd5e6e7f50189d0831da1c2"
+    },
+    "elite-performance": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "6cebe8ffca2c0bb6692f6119c0cd238438ac6e9d2b9a47f6d6bc28c479341f85"
+    },
+    "elite-ux-strategy": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "aa972ac8d870bed33322d0058edbc5e3d654f84ee4cda927976efcfa7f26a728"
+    },
+    "elite-web-design": {
+      "source": "RSHVR/elite-web-design",
+      "sourceType": "github",
+      "computedHash": "6094f0b540d5d6033e00634c3d64f1bd867d03e2d2cca388f60342f4f33cf144"
+    },
+    "ui-sound-design": {
+      "source": "dannyjpwilliams/ui-sound-design-skill",
+      "sourceType": "github",
+      "computedHash": "b5ef284068e1e60dc869cbf67381b1ef4c42eb8765c5ca64e40a7f46ddf6227b"
+    }
+  }
+}
