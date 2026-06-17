@@ -25,3 +25,7 @@ npm-debug.log*
 
 # Cache
 .cache/
+
+# Local dev / test artifacts (screenshots captured during development)
+.playwright-mcp/
+/*.png
