@@ -728,7 +728,7 @@ function PlayerNameInput({ name, onChange }) {
   )
 }
 
-export default function Lobby({ onStart, bestScores, runHistory, discipline, onDisciplineChange, difficulty, onDifficultyChange, speedLevel, onSpeedChange, soundEnabled, onToggleSound, playerName, onNameChange, initAudio, startLobbyMusic, stopLobbyMusic, skierStyle, onStyleChange, leaderboard, credits, unlockedItems, onBuyItem, onEquipItem, onStartDaily, dailyBest, arcadeMode = false, onArcadeModeChange, ghostEnabled, onGhostToggle, nightMode, onNightModeToggle, earnedBadges, selectedLocation, onSelectLocation }) {
+export default function Lobby({ onStart, onStartFreeRide, bestScores, runHistory, discipline, onDisciplineChange, difficulty, onDifficultyChange, speedLevel, onSpeedChange, soundEnabled, onToggleSound, playerName, onNameChange, initAudio, startLobbyMusic, stopLobbyMusic, skierStyle, onStyleChange, leaderboard, credits, unlockedItems, onBuyItem, onEquipItem, onStartDaily, dailyBest, arcadeMode = false, onArcadeModeChange, ghostEnabled, onGhostToggle, nightMode, onNightModeToggle, earnedBadges, selectedLocation, onSelectLocation }) {
   const [showHelp, setShowHelp] = useState(false)
   const [showChangingRoom, setShowChangingRoom] = useState(false)
   const [showShop, setShowShop] = useState(false)
@@ -1048,6 +1048,14 @@ export default function Lobby({ onStart, bestScores, runHistory, discipline, onD
           }`}>
           {arcadeMode ? '⚡ START ARCADE' : 'START RUN'}
         </button>
+
+        {/* FREE RIDE button — open mountain exploration mode */}
+        {onStartFreeRide && (
+          <button onClick={onStartFreeRide}
+            className="mt-3 w-full py-3.5 rounded-2xl font-black text-xl text-white tracking-wider transition-all hover:scale-[1.03] active:scale-95 border border-sky-400/30 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 shadow-[0_0_16px_rgba(56,189,248,0.35)]">
+            🏔️ FREE RIDE
+          </button>
+        )}
 
         {/* Music status + play button */}
         {soundEnabled && !musicPlaying && (

@@ -58,6 +58,16 @@ export const generateSparkles = (count) => {
   }))
 }
 
+export const generateStars = (count) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    x: Math.random() * GAME_WIDTH,
+    y: Math.random() * 95,
+    size: 0.6 + Math.random() * 1.4,
+    opacity: 0.4 + Math.random() * 0.6
+  }))
+}
+
 export const generateTrees = (count) => {
   return Array.from({ length: count }, (_, i) => ({
     id: i,

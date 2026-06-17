@@ -107,8 +107,27 @@ RIGHT_POSITION = GAME_WIDTH * 0.78  // 312
 
 ---
 
+## Free Ride Mode — V2 ideas (V1 shipped)
+
+V1 shipped: open mountain, free steering, coins -> credits, jumps -> Big Air, NPC
+skiers, ski patrol (cruise/rescue/warn), chairlift, lodge, night mode, lift loop.
+See `docs/superpowers/specs/2026-06-16-free-ride-mode-design.md`.
+
+- [ ] Snowmobiles for ski patrol
+- [ ] Halfpipe with trick scoring
+- [ ] Frozen-pond ice physics (slippery handling)
+- [ ] Follow-patrol-to-secret-cave hidden areas
+- [ ] Friendly mountain animal (fox / snow bunny)
+- [ ] Warmth / cocoa meter refilled at the lodge
+- [ ] Touch / on-screen steering buttons for mobile
+- [ ] Coin pickup pop + sound effects in free ride
+
+---
+
 ## Completed
 
+- [x] Free Ride open-mountain mode (V1)
+- [x] Working night mode in the race scene (sky, moon, stars, snow, trees)
 - [x] Initial Docker development environment
 - [x] Modular component architecture
 - [x] Basic gameplay loop

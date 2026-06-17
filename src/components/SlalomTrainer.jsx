@@ -9,7 +9,7 @@ import {
   WORLD_TOUR_LOCATIONS
 } from '../config/gameSettings'
 import { useAudio } from '../hooks/useAudio'
-import { generateSnowParticles, generateSparkles, generateTrees, generateCrowd, generateCourse, getDailySeed, getTodayString } from '../utils/generators'
+import { generateSnowParticles, generateSparkles, generateStars, generateTrees, generateCrowd, generateCourse, getDailySeed, getTodayString } from '../utils/generators'
 import Skier from './Skier'
 import SlalomGate from './SlalomGate'
 import Spectator from './Spectator'
@@ -19,11 +19,13 @@ import { CountdownScreen, FinishScreen, GameOverScreen } from './GameScreens'
 import BigAir from './BigAir'
 import GhostSkier from './GhostSkier'
 import Lobby from './Lobby'
+import FreeRide from './FreeRide/FreeRide'
 import { calculateRunCredits, SHOP_ITEMS } from '../config/shopData'
 import { checkBadges } from '../config/badgeData'
 
 // Pre-generate static elements
 const SPARKLES = generateSparkles(40)
+const NIGHT_STARS = generateStars(70)
 const LEFT_TREES = generateTrees(6)
 const RIGHT_TREES = generateTrees(6)
 const LEFT_CROWD = generateCrowd(15)
@@ -1122,10 +1124,22 @@ export default function SlalomTrainer() {
     setGameState('countdown')
   }
 
+  if (gameState === 'freeride') {
+    return (
+      <FreeRide
+        skierStyle={skierStyle}
+        nightMode={nightMode}
+        addCredits={addCredits}
+        onExit={() => { startLobbyMusic && startLobbyMusic(); setGameState('lobby') }}
+      />
+    )
+  }
+
   if (gameState === 'lobby') {
     return (
       <Lobby
         onStart={startGame}
+        onStartFreeRide={() => { initAudio && initAudio(); stopLobbyMusic && stopLobbyMusic(); setGameState('freeride') }}
         bestScores={bestScores}
         runHistory={runHistory}
         discipline={discipline}
@@ -1192,22 +1206,37 @@ export default function SlalomTrainer() {
       >
         {/* Sky */}
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(180deg, #60a5fa 0%, #93c5fd 40%, #dbeafe 70%, #f0f9ff 100%)'
+          background: nightMode
+            ? 'linear-gradient(180deg, #060818 0%, #0d1330 35%, #1b2350 65%, #2a3566 100%)'
+            : 'linear-gradient(180deg, #60a5fa 0%, #93c5fd 40%, #dbeafe 70%, #f0f9ff 100%)'
         }} />
+
+        {/* Night sky: stars + moon */}
+        {nightMode && (
+          <svg className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: 110 }}>
+            {NIGHT_STARS.map(s => (
+              <circle key={s.id} cx={s.x} cy={s.y} r={s.size} fill="#ffffff" opacity={s.opacity} />
+            ))}
+            <circle cx="320" cy="32" r="20" fill="#f8fafc" opacity="0.95" />
+            <circle cx="313" cy="27" r="20" fill="#1b2350" opacity="0.9" />
+          </svg>
+        )}
 
         {/* Mountains */}
         <svg className="absolute top-0 left-0 w-full" style={{ height: 100 }}>
-          <polygon points="0,100 40,50 80,75 130,30 180,60 230,40 280,55 340,35 400,100" fill="#94a3b8" opacity="0.6" />
-          <polygon points="0,100 60,65 110,45 160,70 210,50 270,60 320,45 400,100" fill="#64748b" opacity="0.5" />
-          <polygon points="130,30 120,45 140,45" fill="white" opacity="0.7" />
-          <polygon points="230,40 220,52 240,52" fill="white" opacity="0.7" />
-          <polygon points="340,35 328,50 352,50" fill="white" opacity="0.7" />
+          <polygon points="0,100 40,50 80,75 130,30 180,60 230,40 280,55 340,35 400,100" fill={nightMode ? '#1e293b' : '#94a3b8'} opacity={nightMode ? 0.9 : 0.6} />
+          <polygon points="0,100 60,65 110,45 160,70 210,50 270,60 320,45 400,100" fill={nightMode ? '#0f172a' : '#64748b'} opacity={nightMode ? 0.85 : 0.5} />
+          <polygon points="130,30 120,45 140,45" fill={nightMode ? '#cbd5e1' : 'white'} opacity="0.7" />
+          <polygon points="230,40 220,52 240,52" fill={nightMode ? '#cbd5e1' : 'white'} opacity="0.7" />
+          <polygon points="340,35 328,50 352,50" fill={nightMode ? '#cbd5e1' : 'white'} opacity="0.7" />
         </svg>
 
         {/* Snow slope */}
         <div className="absolute inset-0" style={{
           top: 70,
-          background: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 40%, #cbd5e1 80%, #94a3b8 100%)'
+          background: nightMode
+            ? 'linear-gradient(180deg, #3b4a6b 0%, #314061 40%, #28344f 80%, #1c2740 100%)'
+            : 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 40%, #cbd5e1 80%, #94a3b8 100%)'
         }} />
 
         {/* Grooming lines */}
@@ -1242,13 +1271,13 @@ export default function SlalomTrainer() {
         <svg className="absolute left-0 top-0 pointer-events-none" style={{ width: 45, height: GAME_HEIGHT }}>
           {LEFT_TREES.map(tree => {
             const scrollY = (tree.y + groundOffset * 1.8) % (GAME_HEIGHT + 80) - 40
-            return <Tree key={tree.id} x={8 + tree.offset * 0.4} y={scrollY} size={tree.size} flipped={false} />
+            return <Tree key={tree.id} x={8 + tree.offset * 0.4} y={scrollY} size={tree.size} flipped={false} nightMode={nightMode} />
           })}
         </svg>
         <svg className="absolute right-0 top-0 pointer-events-none" style={{ width: 45, height: GAME_HEIGHT }}>
           {RIGHT_TREES.map(tree => {
             const scrollY = (tree.y + groundOffset * 1.8) % (GAME_HEIGHT + 80) - 40
-            return <Tree key={tree.id} x={37 - tree.offset * 0.4} y={scrollY} size={tree.size} flipped={true} />
+            return <Tree key={tree.id} x={37 - tree.offset * 0.4} y={scrollY} size={tree.size} flipped={true} nightMode={nightMode} />
           })}
         </svg>
 
