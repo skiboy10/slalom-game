@@ -19,7 +19,7 @@ import { CountdownScreen, FinishScreen, GameOverScreen } from './GameScreens'
 import BigAir from './BigAir'
 import GhostSkier from './GhostSkier'
 import Lobby from './Lobby'
-import FreeRide from './FreeRide/FreeRide'
+import FreeRide from './FreeRide3D/FreeRide3D'
 import { calculateRunCredits, SHOP_ITEMS } from '../config/shopData'
 import { checkBadges } from '../config/badgeData'
 
